@@ -1,0 +1,28 @@
+{
+  "name": "WebCi",
+  "description": "Phaser 4 SVG Map",
+  "version": "0.0.1",
+  "author": "VladBlnO0",
+  "license": "MIT",
+  "licenseUrl": "https://opensource.org/license/mit",
+  "scripts": {
+    "dev": "node log.js dev & vite --config vite/config.dev.mjs",
+    "build": "node log.js build & vite build --config vite/config.prod.mjs",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.5.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.6",
+    "prettier": "^3.8.5",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.62.0",
+    "vite": "^8.1.0"
+  },
+  "dependencies": {
+    "phaser": "4.2.0",
+    "svg-path-commander": "^2.2.1",
+    "terser": "^5.48.0"
+  }
+}
