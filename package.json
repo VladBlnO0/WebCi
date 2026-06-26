@@ -3,6 +3,10 @@
   "description": "Phaser 4 SVG Map",
   "version": "0.0.1",
   "author": "VladBlnO0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/VladBlnO0/WebCi"
+  },
   "license": "MIT",
   "licenseUrl": "https://opensource.org/license/mit",
   "scripts": {
