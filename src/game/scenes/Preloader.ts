@@ -29,7 +29,7 @@ export class Preloader extends Scene {
     this.load.image("logo", "/assets/logo.png");
 
     // Load SVG as XML
-    this.load.xml("poland_map", "/assets/map/Poland_MapChart_Map.svg");
+    this.load.xml("poland_map", "/assets/map/MapChart_Map4.svg");
   }
 
   create() {
