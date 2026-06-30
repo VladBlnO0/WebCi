@@ -1,6 +1,6 @@
-# Phaser 4 and SVG
+# PixiJS and SVG
 
-Poland map created with MapChart
+Map created with MapChart
 
 ## For ellipses
 
