@@ -23,6 +23,6 @@ dist-ssr
 *.sln
 *.sw?
 
-
-log.js
-Think.txt
+public/assets
+.assetpack
+src/manifest.json

@@ -1,26 +1,47 @@
 import SVGPathCommander from "svg-path-commander";
-import { Geom, Scene } from "phaser";
+import { Container, Graphics, Sprite, Polygon } from "pixi.js";
+import { engine } from "../app/getEngine";
 
-export class Map {
-  private scene: Scene;
+interface ProvinceData {
+  id: string;
+  polygons: Polygon[];
+}
 
-  constructor(scene: Scene) {
-    this.scene = scene;
+export class Map extends Container {
+  public mapSprite: Sprite;
+  public provinceData: ProvinceData[] = [];
+  public highlightGraphic: Graphics;
+
+  constructor() {
+    super();
+
+    this.highlightGraphic = new Graphics();
+    this.addChild(this.highlightGraphic);
   }
 
-  createProvinces() {
-    const mapXml = this.scene.cache.xml.get("poland_map");
+  public async createProvinces(svgUrl: string) {
+
+    const response = await fetch(svgUrl);
+    const svgText = await response.text();
+    const parser = new DOMParser();
+    const mapXml = parser.parseFromString(svgText, "image/svg+xml");
     const provinces = mapXml.querySelectorAll("path");
+
+    const parsedProvinces: {
+      id: string;
+      subPaths: number[][];
+      pointCount: number;
+    }[] = [];
 
     provinces.forEach((pathNode: Element) => {
       const provinceId = pathNode.getAttribute("id") || "unknown";
       const pathData = pathNode.getAttribute("d");
 
-      // --- Filter out the junk ---
       if (!pathData) return;
       if (
         provinceId.toLowerCase().includes("pattern") ||
-        provinceId.toLowerCase().includes("background")
+        provinceId.toLowerCase().includes("background") ||
+        provinceId.toLowerCase().includes("path")
       ) {
         return;
       }
@@ -30,7 +51,6 @@ export class Map {
 
       try {
         const path = new SVGPathCommander(pathData);
-
         const absoluteCommands = path.normalize().segments;
 
         absoluteCommands.forEach((command) => {
@@ -49,67 +69,79 @@ export class Map {
         });
         if (currentPath.length > 0) subPaths.push(currentPath);
       } catch (error) {
-        console.warn({ error });
+        console.error("Error ", error);
         return;
       }
 
       if (subPaths.length === 0 || subPaths[0].length < 3) return;
 
-      const provinceGraphic = this.scene.add.graphics();
+      parsedProvinces.push({
+        id: provinceId,
+        subPaths: subPaths,
+        pointCount: subPaths[0].length,
+      });
+    });
 
-      provinceGraphic.lineStyle(0.5, 0x1a334d, 1);
-      provinceGraphic.fillStyle(0x336699, 1);
+    parsedProvinces.sort((a, b) => b.pointCount - a.pointCount);
 
-      provinceGraphic.beginPath();
+    const megaStamp = new Graphics();
 
-      subPaths.forEach((loop) => {
-        provinceGraphic.moveTo(loop[0], loop[1]);
-        for (let i = 2; i < loop.length; i += 2) {
-          provinceGraphic.lineTo(loop[i], loop[i + 1]);
+    parsedProvinces.forEach((prov) => {
+      const mathPolygons: Polygon[] = [];
+
+      prov.subPaths.forEach((loop) => {
+        megaStamp.poly(loop);
+
+        megaStamp.fill({ color: 0x336699, alpha: 1 });
+        megaStamp.stroke({ width: 0.5, color: 0x1a334d, alpha: 1 });
+
+        mathPolygons.push(new Polygon(loop));
+      });
+
+      this.provinceData.push({
+        id: prov.id,
+        polygons: mathPolygons,
+      });
+    });
+
+    const mapTexture = engine().renderer.generateTexture(megaStamp);
+
+    megaStamp.destroy();
+
+    this.mapSprite = new Sprite(mapTexture);
+
+    this.addChildAt(this.mapSprite, 0);
+
+    this.setupInteractivity();
+  }
+
+  private setupInteractivity() {
+    this.mapSprite.eventMode = "static";
+
+    this.mapSprite.on("pointerdown", (event) => {
+      const localPoint = event.getLocalPosition(this.mapSprite);
+
+      for (let i = this.provinceData.length - 1; i >= 0; i--) {
+        const province = this.provinceData[i];
+
+        for (const poly of province.polygons) {
+          if (poly.contains(localPoint.x, localPoint.y)) {
+            console.log(`Selected province: ${province.id}`);
+            this.highlightProvince(province);
+            return;
+          }
         }
-        provinceGraphic.closePath();
-      });
+      }
+    });
+  }
 
-      provinceGraphic.fillPath();
-      provinceGraphic.strokePath();
+  private highlightProvince(province: ProvinceData) {
+    this.highlightGraphic.clear();
 
-      // Z-DEPTH
-      provinceGraphic.setDepth(10000 - subPaths[0].length);
-
-      provinceGraphic.setInteractive(
-        new Geom.Rectangle(0, 0, 0, 0),
-        (hitArea: any, x: number, y: number) => {
-          for (const loop of subPaths) {
-            const poly = new Geom.Polygon(loop);
-
-            if (poly.contains(x, y)) {
-              return true;
-            }
-          }
-          return false;
-        },
-      );
-
-      provinceGraphic.on("pointerdown", () => {
-        console.log(`Selected province: ${provinceId}`);
-
-        provinceGraphic.clear();
-        provinceGraphic.lineStyle(1.5, 0x1a334d, 1);
-        provinceGraphic.fillStyle(0xff0000, 1);
-
-        provinceGraphic.beginPath();
-
-        subPaths.forEach((loop) => {
-          provinceGraphic.moveTo(loop[0], loop[1]);
-          for (let i = 2; i < loop.length; i += 2) {
-            provinceGraphic.lineTo(loop[i], loop[i + 1]);
-          }
-          provinceGraphic.closePath();
-        });
-
-        provinceGraphic.fillPath();
-        provinceGraphic.strokePath();
-      });
+    province.polygons.forEach((poly) => {
+      this.highlightGraphic.poly(poly);
+      this.highlightGraphic.fill({ color: 0xff0000, alpha: 0.5 });
+      this.highlightGraphic.stroke({ width: 2, color: 0xff0000, alpha: 1 });
     });
   }
 }
